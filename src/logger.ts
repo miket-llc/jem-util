@@ -21,26 +21,34 @@ const defaultConfig = {
   fileName: `${appName}-${appVersion}.log`
 }
 
-function createCustomLogger(customConfig: LoggerConfig = {}) {
-  const config = { ...defaultConfig, ...customConfig }
+class LoggerSingleton {
+  private static instance: Logger;
 
-  const defaultTransports = [
-    new transports.Console(),
-    new transports.File({
-      filename: config.fileName,
-      dirname: config.logDirectory
-    })
-  ]
+  private constructor() {}
 
-  return createLogger({
-    format: combine(label({ label: appName }), timestamp(), customFormat),
-    transports: config.additionalTransports
-      ? [...defaultTransports, ...config.additionalTransports]
-      : defaultTransports
-  })
+  public static getInstance(customConfig: LoggerConfig = {}): Logger {
+    if (!LoggerSingleton.instance) {
+      const config = { ...defaultConfig, ...customConfig };
+
+      const defaultTransports = [
+        new transports.Console(),
+        new transports.File({
+          filename: config.fileName,
+          dirname: config.logDirectory
+        })
+      ];
+
+      LoggerSingleton.instance = createLogger({
+        format: combine(label({ label: appName }), timestamp(), customFormat),
+        transports: [...defaultTransports, ...(customConfig.additionalTransports || [])]
+      });
+    }
+
+    return LoggerSingleton.instance;
+  }
 }
 
-const logger = createCustomLogger()
+const logger = LoggerSingleton.getInstance();
 
-export { defaultConfig, createCustomLogger }
-export default logger
+export default logger;
+export { LoggerSingleton as createCustomLogger };
