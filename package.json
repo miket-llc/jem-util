@@ -6,7 +6,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "keywords": [],
   "author": "",
@@ -22,5 +23,8 @@
     "rimraf": "^6.0.1",
     "ts-jest": "^29.2.5",
     "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "winston": "^3.17.0"
   }
 }

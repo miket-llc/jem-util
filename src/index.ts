@@ -1,4 +1,2 @@
-export const deviceIOFunction = () => {
-    console.log("Device IO Functionality");
-  };
-  
+export { default as logger } from './logger'
+export { appName, appVersion } from './versions'
