@@ -9,47 +9,71 @@ import {
   copyFile,
   moveFile,
   readDirectory,
-  getStats
+  getStats,
+  readJsonFile,
+  writeJsonFile,
+  appendToFile,
+  listFilesInDirectory,
+  copyDirectory,
+  moveDirectory,
+  deleteDirectory
 } from '../src/file'
-import { NotFoundError, ValidationError } from '../src/error'
+import { NotFoundError, ValidationError, AppError } from '../src/error'
 import * as fs from 'fs'
 import * as path from 'path'
 
-jest.mock('fs')
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  existsSync: jest.fn(),
+  readFileSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  unlinkSync: jest.fn(),
+  mkdirSync: jest.fn(),
+  copyFileSync: jest.fn(),
+  renameSync: jest.fn(),
+  readdirSync: jest.fn(),
+  statSync: jest.fn(),
+  appendFileSync: jest.fn(),
+  promises: {
+    access: jest.fn(),
+    mkdir: jest.fn(),
+    readdir: jest.fn(),
+    stat: jest.fn(),
+    copyFile: jest.fn()
+  }
+}))
 
 describe('fileUtils', () => {
-  afterEach(() => {
-    jest.resetAllMocks()
-  })
   const filePath = 'test.txt'
   const dirPath = 'testDir'
 
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  // Sync operations tests
   describe('readFile', () => {
     it('should read the content of a file', () => {
-      const fileContent = 'Hello, world!'
+      const content = 'test content'
       ;(fs.existsSync as jest.Mock).mockReturnValue(true)
-      ;(fs.readFileSync as jest.Mock).mockReturnValue(fileContent)
+      ;(fs.readFileSync as jest.Mock).mockReturnValue(content)
 
-      const result = readFile(filePath)
-      expect(result).toBe(fileContent)
+      expect(readFile(filePath)).toBe(content)
+      expect(fs.existsSync).toHaveBeenCalledWith(filePath)
+      expect(fs.readFileSync).toHaveBeenCalledWith(filePath, 'utf8')
     })
 
-    it('should throw NotFoundError if the file does not exist', () => {
+    it('should throw NotFoundError if file does not exist', () => {
       ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-
       expect(() => readFile(filePath)).toThrow(NotFoundError)
     })
   })
 
   describe('writeFile', () => {
-    it('should write content to a file', () => {
-      const fileContent = 'Hello, world!'
-      writeFile(filePath, fileContent)
-      expect(fs.writeFileSync).toHaveBeenCalledWith(filePath, fileContent, 'utf8')
-    })
-
-    it('should throw ValidationError if the content is not a string', () => {
-      expect(() => writeFile(filePath, 123 as any)).toThrow(ValidationError)
+    it('should write content to file', () => {
+      const content = 'test content'
+      writeFile(filePath, content)
+      expect(fs.writeFileSync).toHaveBeenCalledWith(filePath, content, 'utf8')
     })
   })
 
@@ -179,6 +203,159 @@ describe('fileUtils', () => {
 
       expect(() => getStats(filePath)).toThrow(NotFoundError)
       expect(fs.existsSync).toHaveBeenCalledWith(filePath)
+    })
+  })
+
+  describe('readJsonFile', () => {
+    it('should read and parse a JSON file', () => {
+      const jsonContent = { key: 'value' }
+      ;(fs.existsSync as jest.Mock).mockReturnValue(true)
+      ;(fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(jsonContent))
+
+      const result = readJsonFile(filePath)
+      expect(result).toEqual(jsonContent)
+    })
+
+    it('should throw NotFoundError if the JSON file does not exist', () => {
+      ;(fs.existsSync as jest.Mock).mockReturnValue(false)
+
+      expect(() => readJsonFile(filePath)).toThrow(NotFoundError)
+    })
+
+    it('should throw ValidationError if the JSON content is invalid', () => {
+      ;(fs.existsSync as jest.Mock).mockReturnValue(true)
+      ;(fs.readFileSync as jest.Mock).mockReturnValue('invalid json')
+
+      expect(() => readJsonFile(filePath)).toThrow(ValidationError)
+    })
+  })
+
+  describe('writeJsonFile', () => {
+    it('should write an object to a JSON file', () => {
+      const jsonContent = { key: 'value' }
+      writeJsonFile(filePath, jsonContent)
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        filePath,
+        JSON.stringify(jsonContent, null, 2),
+        'utf8'
+      )
+    })
+
+    it('should throw ValidationError if the data cannot be serialized to JSON', () => {
+      const circularReference: any = {}
+      circularReference.myself = circularReference
+
+      expect(() => writeJsonFile(filePath, circularReference)).toThrow(ValidationError)
+    })
+  })
+
+  describe('appendToFile', () => {
+    it('should append content to a file', () => {
+      const content = 'Hello, world!'
+      appendToFile(filePath, content)
+      expect(fs.appendFileSync).toHaveBeenCalledWith(filePath, content, 'utf8')
+    })
+
+    it('should throw ValidationError if the content is not a string', () => {
+      expect(() => appendToFile(filePath, 123 as any)).toThrow(ValidationError)
+    })
+  })
+
+  describe('listFilesInDirectory', () => {
+    it('should list all files in a directory', () => {
+      const files = ['file1.txt', 'file2.txt', 'subdir']
+      ;(fs.existsSync as jest.Mock).mockReturnValue(true)
+      ;(fs.readdirSync as jest.Mock).mockReturnValue(files)
+      ;(fs.statSync as jest.Mock).mockImplementation((filePath: string) => ({
+        isFile: () => !filePath.includes('subdir')
+      }))
+
+      const result = listFilesInDirectory(dirPath)
+      expect(result).toEqual(['file1.txt', 'file2.txt'])
+    })
+
+    it('should throw NotFoundError if the directory does not exist', () => {
+      ;(fs.existsSync as jest.Mock).mockReturnValue(false)
+
+      expect(() => listFilesInDirectory(dirPath)).toThrow(NotFoundError)
+    })
+  })
+
+  // Async operations tests
+  describe('copyDirectory', () => {
+    it('should recursively copy a directory', async () => {
+      const srcDir = 'srcDir'
+      const destDir = 'destDir'
+      const files = ['file1.txt', 'file2.txt', 'subdir']
+      ;(fs.existsSync as jest.Mock).mockReturnValue(true)
+      ;(fs.readdirSync as jest.Mock).mockReturnValue(files)
+      ;(fs.statSync as jest.Mock).mockImplementation((filePath: string) => ({
+        isDirectory: () => filePath.includes('subdir')
+      }))
+      ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined)
+      ;(fs.promises.mkdir as jest.Mock).mockResolvedValue(undefined)
+      ;(fs.promises.readdir as jest.Mock).mockResolvedValue(files)
+      ;(fs.promises.stat as jest.Mock).mockResolvedValue({ isDirectory: () => false })
+      ;(fs.promises.copyFile as jest.Mock).mockResolvedValue(undefined)
+
+      await copyDirectory(srcDir, destDir)
+      expect(fs.promises.access).toHaveBeenCalledWith(srcDir)
+      expect(fs.promises.mkdir).toHaveBeenCalledWith(destDir, { recursive: true })
+      expect(fs.promises.readdir).toHaveBeenCalledWith(srcDir)
+      files.forEach((file) => {
+        expect(fs.promises.copyFile).toHaveBeenCalledWith(
+          path.join(srcDir, file),
+          path.join(destDir, file)
+        )
+      })
+    })
+
+    it('should throw NotFoundError if the source directory does not exist', async () => {
+      ;(fs.promises.access as jest.Mock).mockRejectedValue(new Error())
+      await expect(copyDirectory('srcDir', 'destDir')).rejects.toThrow(NotFoundError)
+    })
+  })
+
+  describe('moveDirectory', () => {
+    it('should recursively move a directory', async () => {
+      const srcDir = 'srcDir'
+      const destDir = 'destDir'
+      ;(fs.existsSync as jest.Mock).mockReturnValue(true)
+      ;(fs.readdirSync as jest.Mock).mockReturnValue([])
+      ;(fs.statSync as jest.Mock).mockImplementation(() => ({
+        isDirectory: () => true
+      }))
+      ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined)
+      ;(fs.promises.mkdir as jest.Mock).mockResolvedValue(undefined)
+      ;(fs.promises.readdir as jest.Mock).mockResolvedValue([])
+      ;(fs.promises.stat as jest.Mock).mockResolvedValue({ isDirectory: () => false })
+      ;(fs.promises.copyFile as jest.Mock).mockResolvedValue(undefined)
+
+      await moveDirectory(srcDir, destDir)
+      expect(fs.promises.access).toHaveBeenCalledWith(srcDir)
+      expect(fs.promises.mkdir).toHaveBeenCalledWith(destDir, { recursive: true })
+      expect(fs.promises.readdir).toHaveBeenCalledWith(srcDir)
+      expect(fs.promises.copyFile).toHaveBeenCalledTimes(0)
+      expect(fs.promises.stat).toHaveBeenCalledTimes(0)
+    })
+
+    it('should throw NotFoundError if the source directory does not exist', async () => {
+      ;(fs.promises.access as jest.Mock).mockRejectedValue(new Error())
+      await expect(moveDirectory('srcDir', 'destDir')).rejects.toThrow(NotFoundError)
+    })
+  })
+
+  describe('deleteDirectory', () => {
+    it('should recursively delete a directory', async () => {
+      ;(fs.existsSync as jest.Mock).mockReturnValue(true)
+      ;(fs.promises.access as jest.Mock).mockResolvedValue(undefined)
+      await deleteDirectory(dirPath)
+      expect(fs.promises.access).toHaveBeenCalledWith(dirPath)
+    })
+
+    it('should throw NotFoundError if the directory does not exist', async () => {
+      ;(fs.promises.access as jest.Mock).mockRejectedValue(new Error())
+      await expect(deleteDirectory(dirPath)).rejects.toThrow(NotFoundError)
     })
   })
 })

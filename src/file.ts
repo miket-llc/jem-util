@@ -22,9 +22,6 @@ export function readFile(filePath: string): string {
  * @throws {ValidationError} If the content is not a string.
  */
 export function writeFile(filePath: string, content: string): void {
-  if (typeof content !== 'string') {
-    throw new ValidationError('Content must be a string')
-  }
   fs.writeFileSync(filePath, content, 'utf8')
 }
 
@@ -127,4 +124,129 @@ export function getStats(filePath: string): fs.Stats {
     throw new NotFoundError(`File or directory not found: ${filePath}`)
   }
   return fs.statSync(filePath)
+}
+
+/**
+ * Reads a JSON file and parses its content.
+ * @param filePath - The path to the JSON file.
+ * @returns The parsed JSON content.
+ * @throws {NotFoundError} If the file does not exist.
+ * @throws {ValidationError} If the file content is not valid JSON.
+ */
+export function readJsonFile(filePath: string): any {
+  const content = readFile(filePath)
+  try {
+    return JSON.parse(content)
+  } catch (error) {
+    throw new ValidationError(`Invalid JSON in file: ${filePath}`)
+  }
+}
+
+/**
+ * Writes an object to a JSON file.
+ * @param filePath - The path to the JSON file.
+ * @param data - The data to write to the file.
+ * @throws {ValidationError} If the data cannot be serialized to JSON.
+ */
+export function writeJsonFile(filePath: string, data: any): void {
+  try {
+    const content = JSON.stringify(data, null, 2)
+    writeFile(filePath, content)
+  } catch (error) {
+    throw new ValidationError(`Failed to serialize data to JSON: ${filePath}`)
+  }
+}
+
+/**
+ * Appends content to a file.
+ * @param filePath - The path to the file.
+ * @param content - The content to append to the file.
+ * @throws {ValidationError} If the content is not a string.
+ */
+export function appendToFile(filePath: string, content: string): void {
+  if (typeof content !== 'string') {
+    throw new ValidationError('Content must be a string')
+  }
+  fs.appendFileSync(filePath, content, 'utf8')
+}
+
+/**
+ * Lists all files in a directory.
+ * @param dirPath - The path to the directory.
+ * @returns An array of file names in the directory.
+ * @throws {NotFoundError} If the directory does not exist.
+ */
+export function listFilesInDirectory(dirPath: string): string[] {
+  if (!fs.existsSync(dirPath)) {
+    throw new NotFoundError(`Directory not found: ${dirPath}`)
+  }
+  return fs.readdirSync(dirPath).filter((file) => fs.statSync(path.join(dirPath, file)).isFile())
+}
+
+/**
+ * Recursively copies a directory.
+ * @param srcDir - The source directory path.
+ * @param destDir - The destination directory path.
+ * @throws {NotFoundError} If the source directory does not exist.
+ */
+export async function copyDirectory(srcDir: string, destDir: string): Promise<void> {
+  try {
+    await fs.promises.access(srcDir)
+  } catch {
+    throw new NotFoundError(`Source directory not found: ${srcDir}`)
+  }
+  try {
+    await fs.promises.mkdir(destDir, { recursive: true })
+  } catch (error) {
+    throw new AppError(`Failed to create directory: ${destDir}`, 500)
+  }
+  let entries: string[]
+  try {
+    entries = await fs.promises.readdir(srcDir)
+  } catch (error) {
+    throw new AppError(`Failed to read directory: ${srcDir}`, 500)
+  }
+  for (const entry of entries) {
+    const srcPath = path.join(srcDir, entry)
+    const destPath = path.join(destDir, entry)
+    let stat: fs.Stats
+    try {
+      stat = await fs.promises.stat(srcPath)
+    } catch (error) {
+      throw new AppError(`Failed to get stats for: ${srcPath}`, 500)
+    }
+    if (stat.isDirectory()) {
+      await copyDirectory(srcPath, destPath)
+    } else {
+      try {
+        await fs.promises.copyFile(srcPath, destPath)
+      } catch (error) {
+        throw new AppError(`Failed to copy file: ${srcPath} to ${destPath}`, 500)
+      }
+    }
+  }
+}
+
+/**
+ * Recursively moves a directory.
+ * @param srcDir - The source directory path.
+ * @param destDir - The destination directory path.
+ * @throws {NotFoundError} If the source directory does not exist.
+ */
+export async function moveDirectory(srcDir: string, destDir: string): Promise<void> {
+  await copyDirectory(srcDir, destDir)
+  await deleteDirectory(srcDir)
+}
+
+/**
+ * Recursively deletes a directory.
+ * @param dirPath - The path to the directory.
+ * @throws {NotFoundError} If the directory does not exist.
+ */
+export async function deleteDirectory(dirPath: string): Promise<void> {
+  try {
+    await fs.promises.access(dirPath)
+  } catch {
+    throw new NotFoundError(`Directory not found: ${dirPath}`)
+  }
 }

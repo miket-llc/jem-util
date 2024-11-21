@@ -1,4 +1,10 @@
-import { formatDate, addDaysToDate, subtractDaysFromDate, differenceInDaysBetweenDates, getCurrentDate } from '../src/datetime'
+import {
+  formatDate,
+  addDaysToDate,
+  subtractDaysFromDate,
+  differenceInDaysBetweenDates,
+  getCurrentDate
+} from '../src/datetime'
 
 describe('datetime utility functions', () => {
   test('formatDate formats date correctly', () => {
