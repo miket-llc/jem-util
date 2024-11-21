@@ -35,7 +35,7 @@ export function subtractDaysFromDate(date: Date, days: number): Date {
  * Calculates the difference in days between two dates.
  * @param date1 - The first date.
  * @param date2 - The second date.
- * @returns The number of days between the two dates.
+ * @returns The difference in days.
  */
 export function differenceInDaysBetweenDates(date1: Date, date2: Date): number {
   return differenceInDays(date1, date2)
@@ -43,7 +43,7 @@ export function differenceInDaysBetweenDates(date1: Date, date2: Date): number {
 
 /**
  * Gets the current date.
- * @returns The current date object.
+ * @returns The current date.
  */
 export function getCurrentDate(): Date {
   return new Date()
