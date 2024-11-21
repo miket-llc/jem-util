@@ -69,6 +69,15 @@ export function joinPath(...paths: string[]): string {
 }
 
 /**
+ * Gets the directory name of a file path.
+ * @param filePath - The file path.
+ * @returns The directory name.
+ */
+export function getDirName(filePath: string): string {
+  return path.dirname(filePath)
+}
+
+/**
  * Copies a file from one location to another.
  * @param srcPath - The source file path.
  * @param destPath - The destination file path.

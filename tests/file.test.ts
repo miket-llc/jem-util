@@ -5,6 +5,7 @@ import {
   createDirectory,
   exists,
   joinPath,
+  getDirName,
   copyFile,
   moveFile,
   readDirectory,
@@ -97,6 +98,13 @@ describe('fileUtils', () => {
     it('should join multiple path segments into a single path', () => {
       const result = joinPath('dir', 'subdir', 'file.txt')
       expect(result).toBe(path.join('dir', 'subdir', 'file.txt'))
+    })
+  })
+
+  describe('getDirName', () => {
+    it('should get the directory name of a file path', () => {
+      const result = getDirName('/path/to/file.txt')
+      expect(result).toBe(path.dirname('/path/to/file.txt'))
     })
   })
 
