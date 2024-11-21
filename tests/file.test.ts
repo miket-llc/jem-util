@@ -1,4 +1,15 @@
-import { readFile, writeFile, deleteFile, createDirectory, exists, joinPath, copyFile, moveFile, readDirectory, getStats } from '../src/file'
+import {
+  readFile,
+  writeFile,
+  deleteFile,
+  createDirectory,
+  exists,
+  joinPath,
+  copyFile,
+  moveFile,
+  readDirectory,
+  getStats
+} from '../src/file'
 import { NotFoundError, ValidationError } from '../src/error'
 import * as fs from 'fs'
 import * as path from 'path'
