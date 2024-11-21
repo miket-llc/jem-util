@@ -70,11 +70,3 @@ export function catchAsync(fn: Function) {
     return fnReturn
   }
 }
-
-/**
- * Utility function to log errors.
- * @param error - The error object.
- */
-export function logError(error: Error): void {
-  console.error('Error:', error)
-}

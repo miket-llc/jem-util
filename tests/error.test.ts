@@ -3,8 +3,7 @@ import {
   ValidationError,
   NotFoundError,
   InternalServerError,
-  catchAsync,
-  logError
+  catchAsync
 } from '../src/error'
 
 describe('AppError', () => {
@@ -55,17 +54,5 @@ describe('catchAsync', () => {
     await expect(wrappedFunction()).rejects.toThrow('Async error')
 
     expect(asyncFunction).toHaveBeenCalled()
-  })
-})
-
-describe('logError', () => {
-  it('should log the error', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
-    const error = new Error('Test error')
-
-    logError(error)
-
-    expect(consoleSpy).toHaveBeenCalledWith('Error:', error)
-    consoleSpy.mockRestore()
   })
 })
