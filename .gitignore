@@ -23,7 +23,6 @@ coverage
 
 # IDE specific files
 .idea/
-.vscode/
 *.swp
 *.swo
 
@@ -38,3 +37,6 @@ build/
 .env
 .env.local
 .env.*.local
+
+# Uncomment the following line if you want to ignore other VS Code settings
+# .vscode/
